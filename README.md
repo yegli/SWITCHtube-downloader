@@ -8,6 +8,7 @@ A Python cli-tool to download videos from SWITCHtube. Supports full organization
 - Download videos from SWITCHtube.
 - cli authentication with cookie caching.
 - support for organization / channels and direct video download.
+- now supports required OTP
 
 ## Future Features
 - asynchronous downloads.
@@ -71,7 +72,7 @@ This will install all necessary dependencies listed in the `requirements.txt` fi
 This project requires certain environment variables to be set up in a `.env` file to function correctly. Create a `.env` file in the root directory of the project and include the following information:
 
 ```plaintext
-SCHOOL=your_school_name
+SCHOOL=your_school_name # This name should match the value in the dropdown when accessing `tube.switch.ch`
 USERNAME=your_username
 PASSWORD=your_password
 ```
@@ -90,6 +91,8 @@ This tool uses command-line arguments to specify the video or folder URL to down
 - **`-s`, `--school`** (optional): The university or school name for matching. This is required if the `-u` (username) is provided.
 - **`-d`, `--dir`** (optional, default: `downloads`): The directory where the videos will be downloaded. If not provided, the default directory is `downloads`.
 - **`--debug`** (optional): Run the browser in non-headless mode, showing the browser window (useful for debugging).
+
+Once you run the program the CLI will ask you to provide your OTP code after which the download will proceed. Your token isn't stored but required to get the session cookie, which is then used for multiple downloads if you provided a link to a channel.
 
 ### Example Usage
 
@@ -119,8 +122,8 @@ python main.py https://example.com/video -d /path/to/downloads --debug
 
 ### Key Notes:
 - values for `--user`, `--password` and `--school`can be set using the `.env` file as described above.
-
 - **`--user` and `--password`**: If you provide a username using `--user`, you **must** also provide the corresponding password using `--password`.
 - **`--school`**: This argument should be used along with `--user` to specify the associated university or school name for authentication.
+- make sure to provide your OTP once prompted via CLI or the script will timeout.
 
 
