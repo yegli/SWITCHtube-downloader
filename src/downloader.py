@@ -1,7 +1,12 @@
 import os
+import re
+from urllib.parse import urlparse
 import requests  # type: ignore
 import pickle
 from selenium.webdriver.common.by import By  # type: ignore
+from selenium.webdriver.support.ui import WebDriverWait  # type: ignore
+from selenium.webdriver.support import expected_conditions as EC  # type: ignore
+from selenium.common.exceptions import TimeoutException  # type: ignore
 from cookies import save_cookies
 from tqdm import tqdm  # type: ignore
 
@@ -25,6 +30,17 @@ def folder_downloader(folder_url, driver, output_folder):
     """ Downloads all video files in a specified folder"""
 
     video_hrefs = []
+    try:
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_all_elements_located((
+                By.XPATH,
+                "//turbo-frame[@id='videos-items']//div[starts-with(@id, 'video_')]"
+            ))
+        )
+    except TimeoutException:
+        print("No videos found after login; page may not have finished loading.")
+        return
+
     video_divs = driver.find_elements(
         By.XPATH,
         "//turbo-frame[@id='videos-items']//div[starts-with(@id, 'video_')]"
@@ -45,23 +61,99 @@ def folder_downloader(folder_url, driver, output_folder):
         driver.get(folder_url)
 
 
+def _safe_text(driver, xpath, fallback):
+    try:
+        return driver.find_element(By.XPATH, xpath).text.strip()
+    except Exception:
+        return fallback
+
+
+def _safe_attr(driver, xpath, attr, fallback=""):
+    try:
+        value = driver.find_element(By.XPATH, xpath).get_attribute(attr)
+        return (value or "").strip() or fallback
+    except Exception:
+        return fallback
+
+
+def _first_text(driver, xpaths):
+    for xpath in xpaths:
+        value = _safe_text(driver, xpath, "")
+        if value:
+            return value
+    return ""
+
+
+def _sanitize_filename(value, fallback):
+    cleaned = re.sub(r"[\\/:*?\"<>|]+", "_", value.strip())
+    cleaned = re.sub(r"\s+", "_", cleaned)
+    cleaned = cleaned.strip("._-")
+    return cleaned or fallback
+
+
+def _title_without_suffix(driver_title):
+    if " - " in driver_title:
+        return driver_title.split(" - ", 1)[0].strip()
+    return driver_title.strip()
+
+
+def _parent_from_url(driver):
+    try:
+        path = urlparse(driver.current_url).path.strip("/")
+        if not path:
+            return ""
+        first_segment = path.split("/", 1)[0]
+        return first_segment
+    except Exception:
+        return ""
+
+
 def download_video_file(video_url, driver, output_folder):
     """Downloads the video file from the given URL."""
 
     save_cookies(driver)  # Save cookies for the requests session
 
-    video_name = driver.find_element(
-        By.XPATH, "//div[@class='title-with-menu']//h1[1]"
-    ).text
-    parent_dir = driver.find_element(
-        By.XPATH,
-        "//div[@class='title-with-menu']//div[@class='headers']//h2/a"
-    ).text
-    video_parentdir_name = parent_dir.replace(" ", "_")
+    video_name = _first_text(
+        driver,
+        [
+            "//div[contains(@class,'title-with-menu')]//h1",
+            "//h1",
+            "//main//header//h1",
+        ],
+    )
+    if not video_name:
+        video_name = _safe_attr(
+            driver, "//meta[@property='og:title']", "content", ""
+        )
+    if not video_name:
+        video_name = _title_without_suffix(driver.title or "")
+    if not video_name:
+        video_name = "video"
+
+    parent_dir = _first_text(
+        driver,
+        [
+            "//div[contains(@class,'title-with-menu')]"
+            "//div[contains(@class,'headers')]//h2/a",
+            "//nav[contains(@class,'breadcrumb')]//a[last()]",
+            "//ol[contains(@class,'breadcrumb')]//a[last()]",
+            "//a[contains(@href,'/channels/')][1]",
+        ],
+    )
+    if not parent_dir:
+        parent_dir = _safe_attr(
+            driver, "//meta[@property='og:site_name']", "content", ""
+        )
+    if not parent_dir:
+        parent_dir = _parent_from_url(driver)
+    if not parent_dir:
+        parent_dir = "switchtube"
+
+    video_parentdir_name = _sanitize_filename(parent_dir, "switchtube")
     os.makedirs(
         os.path.join(output_folder, video_parentdir_name), exist_ok=True
     )
-    video_filename = video_name.replace(", ", "-").replace(" ", "_") + ".mp4"
+    video_filename = _sanitize_filename(video_name, "video") + ".mp4"
     video_path = os.path.join(
         output_folder, video_parentdir_name, video_filename
     )
