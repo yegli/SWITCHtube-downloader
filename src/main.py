@@ -8,12 +8,13 @@ from authentication import authenticate_user
 import os
 import argparse
 import sys
-from dotenv import load_dotenv  # type: ignore
+from dotenv import find_dotenv, load_dotenv  # type: ignore
 
 
 def load_environment_variables():
     """Loads environment variables."""
-    load_dotenv()
+    dotenv_path = find_dotenv()
+    load_dotenv(dotenv_path=dotenv_path, override=True)
     school = os.getenv("SCHOOL")
     username = os.getenv("USERNAME")
     password = os.getenv("PASSWORD")
@@ -38,13 +39,6 @@ def main(
     debug=False, output_folder="downloads"
 ):
     """Main function to execute the video download process."""
-
-    if not args.password:
-        username, password, school = load_environment_variables()
-    else:
-        username = args.user
-        password = args.password
-        school = args.school
 
     driver = setup_selenium_driver(debug)
 
@@ -104,9 +98,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.user and not args.password:
-        print("Error: If username is set, -p / --password is required.")
-        print("Error: If username is set, -s / --school is required")
+    env_username, env_password, env_school = load_environment_variables()
+    username = args.user or env_username
+    password = args.password or env_password
+    school = args.school or env_school
+
+    if not all([username, password, school]):
+        print("Error: Missing one or more credentials (username, password, school).")
         sys.exit(1)
 
-    main(args.url, args.user, args.password, args.school, args.debug, args.dir)
+    main(args.url, username, password, school, args.debug, args.dir)

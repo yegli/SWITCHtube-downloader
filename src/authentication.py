@@ -21,15 +21,22 @@ def _select_school_from_dropdown(driver, school: str) -> bool:
         return False
 
     select = Select(select_element)
+    target = school.strip()
+    contains_match = None
     for option in select_element.find_elements(By.TAG_NAME, "option"):
         option_value = (option.get_attribute("value") or "").strip()
         option_text = option.text.strip()
-        if option_value == school:
+        if option_value == target:
             select.select_by_value(option_value)
             return True
-        if option_text == school or school in option_text:
+        if option_text == target:
             select.select_by_visible_text(option_text)
             return True
+        if target and target in option_text and contains_match is None:
+            contains_match = option_text
+    if contains_match:
+        select.select_by_visible_text(contains_match)
+        return True
     return False
 
 
@@ -39,16 +46,29 @@ def _select_school_from_list(driver, selection_input, school: str) -> None:
     selection_input.send_keys(Keys.BACKSPACE)
     selection_input.send_keys(school)
 
-    xpath_school = _xpath_literal(school)
-    option_xpath = (
-        "//*[contains(@class,'idd_listItem') or contains(@class,'idd_li')]"
-        f"[(@savedvalue = {xpath_school}) or (@data = {xpath_school})"
-        f" or contains(@data, {xpath_school}) or normalize-space(.) = {xpath_school}"
-        f" or contains(normalize-space(.), {xpath_school})]"
-    )
     try:
+        xpath_school = _xpath_literal(school)
+        exact_xpath = (
+            "//*[contains(@class,'idd_listItem') or contains(@class,'idd_li')]"
+            f"[(@savedvalue = {xpath_school}) or (@data = {xpath_school})"
+            f" or normalize-space(.) = {xpath_school}]"
+        )
         option = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, option_xpath))
+            EC.element_to_be_clickable((By.XPATH, exact_xpath))
+        )
+        option.click()
+        return
+    except TimeoutException:
+        pass
+
+    try:
+        contains_xpath = (
+            "//*[contains(@class,'idd_listItem') or contains(@class,'idd_li')]"
+            f"[contains(@data, {xpath_school})"
+            f" or contains(normalize-space(.), {xpath_school})]"
+        )
+        option = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, contains_xpath))
         )
         option.click()
     except TimeoutException:
