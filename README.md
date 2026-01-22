@@ -1,5 +1,6 @@
 # SWITCHtube-downloader
 A Python cli-tool to download videos from SWITCHtube. Supports full organization / folder download and cookie caching. Great for automating video downloads to study from anywhere.
+> Please note that at times it can be buggy due to different load times in such scenarios rerun the program and any issues should resolve by themselves.
 
 [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/panmona/switchtube-dl/issues)
 
@@ -8,7 +9,7 @@ A Python cli-tool to download videos from SWITCHtube. Supports full organization
 - Download videos from SWITCHtube.
 - cli authentication with cookie caching.
 - support for organization / channels and direct video download.
-- now supports required OTP
+- supports required OTP (provided via cli)
 
 ## Future Features
 - asynchronous downloads.
@@ -105,19 +106,19 @@ python main.py <url>
 **Example 1**: Download a video with no user credentials (headless mode enabled by default):
 
 ```bash
-python main.py https://example.com/video
+python main.py https://tube.switch.ch/channels/XXXX
 ```
 
 **Example 2**: Download a video with user credentials provided via CLI:
 
 ```bash
-python main.py https://example.com/video -u your_username -p your_password -s your_school
+python main.py https://tube.switch.ch/channels/XXXX -u your_username -p your_password -s your_school
 ```
 
 **Example 3**: Download a video with a specific directory and enabling the browser window:
 
 ```bash
-python main.py https://example.com/video -d /path/to/downloads --debug
+python main.py https://tube.switch.ch/channels/XXXX -d /path/to/downloads --debug
 ```
 
 ### Key Notes:
